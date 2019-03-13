@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+tmp.png
+*.bak
+.idea
+update.time
+update.lock
+res.version
+log
+tmp
+db.sqlite3
+nohup.out
