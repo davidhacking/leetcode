@@ -12,3 +12,4 @@ log
 tmp
 db.sqlite3
 nohup.out
+venv
