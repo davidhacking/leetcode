@@ -5,7 +5,7 @@
 - 着重方法的新颖性和实用性
 - 简介：游戏都是靠颜值吃饭的，所以游戏的美术资源开发是游戏研发的重要部分，游戏在每个版本的迭代过程中都会产生多余的美术资源，例如：人物贴图，场景文件等等。现有的技术方案：通过源代码文件递归查找，入口点难以确定，美术资源文件可能不规范。**我的解决方案**：，游戏可执行文件和美术资源文件都存储在Linux系统上，Linux系统通过虚拟化软件的共享文件夹方式，将游戏运行需要的资源提供给windows系统，windows系统上能够正常运行游戏。对整个游戏进行全量回归，通过Linux提供的文件监听接口对所有游戏文件进行监控，标记游戏过程中用到的美术资源。
 
-![架构](D:\MF\python_ws\algo\project\架构.png)
+![架构](./架构.png)
 
 - **核心技术点**，Linux提供了方便的inotify特性，能够方便的监控文件系统的变化
 - VM
@@ -19,9 +19,9 @@
 
 ### 基于游戏客户端协议日志的BUG复现与自动化测试方法
 
-- 简介：通过hook客户端network模块实现协议日志的监听，设计并实现游戏的虚拟客户端用于重放客户端协议，通过在游戏内的观战方法对BUG进行复现
+- 简介：通过hook客户端network模块实现协议日志的监听，设计并实现游戏的虚拟客户端用于重放客户端协议，通过在游戏内的观战方法对BUG进行复现。需要完全了解服务器从底层引擎到上层脚本实现的每个细节，让我对如果设计高可用的服务器架构有了新的认识，之后很容易可以想明白Nginx和redis的工作原理，并且还能提出redis还有什么可以改进的
 
-![架构二](D:\MF\python_ws\algo\project\架构二.png)
+![架构二](./架构二.png)
 
 - hook客户端network模块，在python代码初始化网络模块后为每条发送的协议设置钩子，实际是get module attribute和set module attribute的过程
 - 虚拟客户端：引擎层：基于libevent编写的单线程异步socket通信库，脚本层实现基于状态机和帧同步的多客户端模拟器
@@ -57,3 +57,34 @@
 - 发现的问题：
   - 游戏中存在大量可击碎物件，每个可击碎物件都会被场景引用，而为了找到可击碎物件对应的场景，会保留一个场景的对象，在玩家将可击碎物件击碎后，这段内存并没有释放，而这段内存已经不需要了
     - 改进方法：把每个可击碎对象改成weakref
+
+### Express Service
+
+- 物流报告：通过模拟浏览器的方式（phantomjs）登入CAS统一认证平台并爬取物流系统输出在CAT上的日志，分析日志中的物流数据（通过xpath），生成邮件报告每天发送给领导查阅
+
+- 物流查询服务：1. 定时更新物流信息；2. 对接所有物流公司的查询接口（菜鸟、圆通）；
+  - 整个物流服务由Spring-boot编写，通过13个docker container跑起来，用Mesos做容器管理，AUG项目（权限管理）+Nginx做的负载均衡，物流服务包括：B端、C端接口、物流查询接口等等
+  - 通过python编写多线程任务执行器（多线程为了触发多个任务同时执行），读取预先设置在redis中的任务，实际是调用物流服务的接口参数
+  - 任务的实际执行者是Spring-boot编写的物流服务
+- 虚假发货：1. 定义：买家操作了发货，但实际未发货（根据物流信息），根据商品不同有2d和4d发货后的物流信息更新期限
+- [MySql物流数据向Hbase转型](http://stor.51cto.com/art/201806/576466.htm)，
+- 物流投诉：
+- [CAT](https://github.com/dianping/cat)
+- CAS，单点登入，SSO，用户在CAS登入后，CAS服务器会给用户签发一个Ticket Grangting Ticket(TGT)，给用户保存在浏览器Cookie中
+
+![CAS架构](/Users/david/github/leetcode/project/CAS架构.png)
+
+- OAuth，一个授权协议，授权第三方服务访问用户数据的协议，这个Client就是第三方服务，第三方服务发起认证请求到Resource Owner，Resource Owner返回认证页面，由客户端确认后，Resource Owner返回第三方服务许可证，第三方服务再拿许可证到认证服务器拿到Access Token，最后用Access Token访问实际的资源服务器
+
+![OAuth](/Users/david/github/leetcode/project/OAuth.png)
+
+- Mesos
+
+- Nginx实现负载均衡，通过统计服务器的连接数、处理请求数和客户端IP Hash值决定此次连接由哪台server处理
+  - 反向代理为什么叫反向代理：正向代理，代理的是客户端，在server看来所有的client请求都是来自proxy，而反向代理代理的是Server，在Client看来所有的Server都是Nginx
+  - Master-Worker模式，当运行nginx -s reload之后，master会读取conf创建新的worker进程，老的worker进程会在处理完请求后被kill掉，worker进程采用epoll模型处理
+  - 动静分离，静态资源由Nginx管理即可
+- redis多线程读取任务并标记任务已读取，通过setnx加锁解决多线程访问时同时标记任务的情况（悲观锁）
+  - redis中的事务，乐观锁，利用watch关键字实现，可以watch一个变量，知道exec提交，在此期间如果watch的变量改变则之间失败当前的操作。想法：我觉得不太好，可以采用proactor模型，因为redis单线程本身保证了命令执行的线性化，所以可以直接通过一个连接向redis提交get get callback 和set三个操作给redis，redis执行完返回，如果怕get callback是使用者的逻辑不可控，可以交给使用者自己优化
+  - redis持久化，可以手动执行，也可以通过conf文件配置成定时执行（SAVE通过主进程备份，BGSAVE通过子进程备份，前者备份是redis无法工作，后者工作时只备份接收命令时刻的redis状态），还可以通过AOF记录写数据库命令日志的方式进行备份，开启AOF主进程都是先写缓存然后看配置决定写AOF文件的时间点
+- Spring-boot，对比springmvc，springboot更加轻量，适合快速开发，省去了需要xml的配置
