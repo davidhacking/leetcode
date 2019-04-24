@@ -23,7 +23,16 @@ class IndexCmp:
 
 
 class Solution(object):
+
 	def twoSum(self, nums, target):
+		# 利用find的方式
+		lookup = {}
+		for i, n in enumerate(nums):
+			if target-n in lookup:
+				return [i, lookup[target-n]]
+			lookup[n] = i
+
+	def twoSum2(self, nums, target):
 		"""
 		:type nums: List[int]
 		:type target: int

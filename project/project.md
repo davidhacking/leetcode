@@ -81,6 +81,13 @@
     - 创建分布式锁，通过Watcher，比如写一个node，如果写成功则获得锁，否则监听节点删除事件，收到删除事件则进行下一次获取锁
     - 拜占庭将军问题
     - 节点失效问题，首先是选leader问题，zk在有半数以上节点工作时是可以工作的，如果leader失效会重新选出leader
+  - Hbase，一个稀疏的，分布式的，多维度的，一致性的，排序的map
+    - 排序：采用rowkey+cf+qualifier+timestamp的key进行排序的，所以key设计的越短越好，查询时只能通过key进行get或scan，所以如果需要进行join操作需要自己写mapReduce，为了让数据能够存在多个regionserver上，设计rowkey就很重要了，如果rowkey是自增的这会导致一个一个regionserver的写
+    - 分布式：采用HDFS进行分布式存储
+    - 一致性：读写数据的ACID，写：先锁住所有需要写的行数据，获得写事务号（writenumber），先写WAL再写MemStore，然后向Hbase提交事务号并释放锁，Hbase负责把所有事务按先后顺序替换ReadPoint，即让写操作可见。读：拿到ReadPoint，读数据
+    - 稀疏：Hbase是按照列族进行存储的，如果某行记录的某列为空不会进行存储，如果A列簇有1G数据，B只有1M数据，那么可能一个A的数据会跨好几个regionserver，在查询B数据的时候就会跨多个region导致查询较慢
+    - RegionServer，每个Region的管理节点，负责向HMaster汇报节点健康状况，实现增删改查背后的逻辑
+    - [存储结构](https://blog.csdn.net/sunspeedzy/article/details/81010311)：RegionServer包含多个Region，一个Region包含多个Store（一个CF），一个Store包含一个MemStore和一个StoreFile
 - 物流投诉：
 - MySql
   - binlog，以事务的形式记录更改数据库的语句
@@ -104,3 +111,11 @@
   - redis中的事务，乐观锁，利用watch关键字实现，可以watch一个变量，知道exec提交，在此期间如果watch的变量改变则之间失败当前的操作。想法：我觉得不太好，可以采用proactor模型，因为redis单线程本身保证了命令执行的线性化，所以可以直接通过一个连接向redis提交get get callback 和set三个操作给redis，redis执行完返回，如果怕get callback是使用者的逻辑不可控，可以交给使用者自己优化
   - redis持久化，可以手动执行，也可以通过conf文件配置成定时执行（SAVE通过主进程备份，BGSAVE通过子进程备份，前者备份是redis无法工作，后者工作时只备份接收命令时刻的redis状态），还可以通过AOF记录写数据库命令日志的方式进行备份，开启AOF主进程都是先写缓存然后看配置决定写AOF文件的时间点
 - Spring-boot，对比springmvc，springboot更加轻量，适合快速开发，省去了需要xml的配置
+
+### TEE x TAM
+
+- 简介：TEE操作系统，分离了一部分Android操作系统中敏感的操作权限（例如：身份认证和密钥管理）到TEE中执行，实习IEEE上的OTrP协议完成TA的安装与卸载
+  - 为什么安全？执行环境的隔离、利用信任链保证平台完整性，在此基础上提供数据加密解密
+  - OTrP协议：利用JWE和JWS作为安全通信协议，进行安全应用的安装、更新和卸载，以及应用间的依赖管理
+    - 加解密的实现：由于使用C语言进行开发，C语言并没有JWE和JWS的实现，所以需要自己实现，RSA的公私钥加解密、SHA256 hash算法和DES对称加密算法都有一定的了解，例如：所有的加解密和hash算法都是encrypt或decrypt block by block的方式进行的（这可以带来一个好处，就是节省内存，将数据原地解密），而RSA的解密过程其实是应用相同的算法利用对称的密钥加密，还有就是每种算法的时间复杂度有个直观的感受，例如RSA算法是所有算法时间复杂度最高的
+    - 依赖管理：使用js的d3tree实现web view的方式，让开发者自己构建依赖树
