@@ -111,26 +111,85 @@ def right_stack_traverse3(node, visit=traverse_func):
 				stack.append(cur.left)
 
 
+def preorder_stack_traverse(root):
+	stack = []
+	cur = root
+	while cur or stack:
+		if cur:
+			traverse_func(cur)
+			stack.append(cur)
+			cur = cur.left
+		else:
+			cur = stack.pop()
+			cur = cur.right
+
+
+def postorder_stack_traverse1(root):
+	stack = []
+	res = []
+	cur = root
+	while cur or stack:
+		if cur:
+			res.append(cur)
+			stack.append(cur)
+			cur = cur.right
+		else:
+			cur = stack.pop()
+			cur = cur.left
+	res.reverse()
+	for node in res:
+		traverse_func(node)
+
+def postorder_stack_traverse2(root):
+	stack = [root]
+	pre = None
+	while stack:
+		cur = stack[-1]
+		if cur.left == cur.right:
+			traverse_func(cur)
+			stack.pop()
+			pre = cur
+		elif pre and (not cur.left or not cur.right) and (cur.left == pre or cur.right == pre):
+			traverse_func(cur)
+			stack.pop()
+			pre = cur
+		elif cur.left and cur.right and pre == cur.right:
+			traverse_func(cur)
+			stack.pop()
+			pre = cur
+		else:
+			if cur.right:
+				stack.append(cur.right)
+			if cur.left:
+				stack.append(cur.left)
+
+
+
 if __name__ == '__main__':
 	root = Node('A', Node('B', Node('D'), Node('E')), Node('C', Node('F'), Node('G')))
-	print "mid"
-	mid_traverse(root)
+	preorder_stack_traverse(root)
 	print ""
-	mid_stack_traverse(root)
+	postorder_stack_traverse1(root)
 	print ""
-
-	print "left"
-	left_traverse(root)
-	print ""
-
-	left_stack_traverse(root)
-	print ""
-
-	print "right"
-	right_traverse(root)
-	print ""
-
-	right_stack_traverse1(root)
-	print ""
-	right_stack_traverse3(root)
-	print ""
+	postorder_stack_traverse2(root)
+	# print "mid"
+	# mid_traverse(root)
+	# print ""
+	# mid_stack_traverse(root)
+	# print ""
+	#
+	# print "left"
+	# left_traverse(root)
+	# print ""
+	#
+	# left_stack_traverse(root)
+	# print ""
+	#
+	# print "right"
+	# right_traverse(root)
+	# print ""
+	#
+	# right_stack_traverse1(root)
+	# print ""
+	# right_stack_traverse3(root)
+	# print ""
